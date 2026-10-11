@@ -1,0 +1,35 @@
+{
+  "generatedAt": "2026-10-10T06:42:46.845Z",
+  "base": "http://localhost:8080",
+  "endpoint": "GET /api/student/schedule",
+  "rounds": 3,
+  "results": [
+    {
+      "concurrency": 50,
+      "successRate": 1,
+      "p50": 129.6,
+      "p95": 136.4,
+      "max": 139,
+      "avg": 96.4,
+      "qps": 479.9
+    },
+    {
+      "concurrency": 100,
+      "successRate": 1,
+      "p50": 92,
+      "p95": 106,
+      "max": 114.6,
+      "avg": 86.6,
+      "qps": 823
+    },
+    {
+      "concurrency": 200,
+      "successRate": 1,
+      "p50": 159.7,
+      "p95": 176.1,
+      "max": 185.3,
+      "avg": 136.7,
+      "qps": 1001.4
+    }
+  ]
+}

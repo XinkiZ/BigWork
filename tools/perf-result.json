@@ -1,0 +1,35 @@
+{
+  "generatedAt": "2026-10-10T06:42:45.232Z",
+  "base": "http://localhost:8080",
+  "endpoint": "GET /api/student/catalog",
+  "rounds": 3,
+  "results": [
+    {
+      "concurrency": 50,
+      "successRate": 1,
+      "p50": 120.8,
+      "p95": 134.6,
+      "max": 136.9,
+      "avg": 108.7,
+      "qps": 379.7
+    },
+    {
+      "concurrency": 100,
+      "successRate": 1,
+      "p50": 179.7,
+      "p95": 198.6,
+      "max": 201.3,
+      "avg": 136.5,
+      "qps": 536.3
+    },
+    {
+      "concurrency": 200,
+      "successRate": 1,
+      "p50": 243.4,
+      "p95": 265.3,
+      "max": 282.9,
+      "avg": 199.5,
+      "qps": 709.9
+    }
+  ]
+}

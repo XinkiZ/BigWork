@@ -1,0 +1,26 @@
+{
+  "generatedAt": "2026-10-10T06:43:15.075Z",
+  "base": "http://localhost:8080",
+  "endpoint": "GET /api/student/catalog",
+  "rounds": 1,
+  "results": [
+    {
+      "concurrency": 10,
+      "successRate": 1,
+      "p50": 8027.4,
+      "p95": 8067.3,
+      "max": 8067.3,
+      "avg": 8038.7,
+      "qps": 1.2
+    },
+    {
+      "concurrency": 25,
+      "successRate": 1,
+      "p50": 8035.7,
+      "p95": 8040.5,
+      "max": 8041.6,
+      "avg": 8035.8,
+      "qps": 3.1
+    }
+  ]
+}

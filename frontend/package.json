@@ -1,0 +1,22 @@
+{
+  "name": "wylie-course-registration-frontend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Wylie College 学生选课注册系统 —— 前端（Vue3 + Win95/98 复古界面）",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4173"
+  },
+  "dependencies": {
+    "axios": "^1.7.9",
+    "pinia": "^2.3.0",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "vite": "^5.4.11"
+  }
+}

@@ -1,0 +1,10 @@
+# 统一换行符策略：仓库内一律以 LF 存储，避免不同机器（autocrlf 设置不同）之间
+# 出现"整个文件都被改动"的伪差异。
+* text=auto eol=lf
+
+# 二进制文件不做换行符转换
+*.png binary
+*.jpg binary
+*.ico binary
+*.jar binary
+*.class binary

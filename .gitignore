@@ -1,0 +1,52 @@
+# ============================================================
+#  Wylie College 学生选课注册系统 —— Git 忽略规则
+#  原则：提交"源码 + 脚本 + 文档 + 实测数据"；
+#        不提交构建产物、依赖目录、IDE 私有配置与本机临时文件。
+# ============================================================
+
+# ---------- Java / Maven 构建产物 ----------
+backend/target/
+target/
+*.class
+*.jar
+*.war
+
+# ---------- 前端依赖与构建产物 ----------
+node_modules/
+dist/
+.vite/
+.vite-*
+
+# ---------- IDE 私有配置（因人而异，不应共享） ----------
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+.vscode/
+.settings/
+.classpath
+.project
+
+# ---------- 操作系统与编辑器临时文件 ----------
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+*~
+*.swp
+*.tmp
+*.bak
+*.orig
+*.log
+logs/
+
+# ---------- 本机环境覆盖文件 ----------
+# 注意：backend/src/main/resources/application.yml 中的数据库口令为
+#       课程设计演示用默认口令（与 db/*.sql 一致），属**有意提交**内容，
+#       以便验收方按 README 三步启动即可运行；正式项目应改为环境变量注入。
+.env
+.env.*
+*.pem
+*.key
+application-local.yml

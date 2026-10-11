@@ -1,0 +1,16 @@
+{
+  "generatedAt": "2026-10-10T06:42:43.189Z",
+  "base": "http://localhost:8080",
+  "direct": {
+    "first": 8073.7,
+    "second": 8037.9,
+    "average": 8055.8
+  },
+  "cached": {
+    "refresh": 8021.9,
+    "first": 30.6,
+    "second": 28.4,
+    "average": 29.5
+  },
+  "speedup": 273.1
+}
