@@ -6,8 +6,6 @@ import com.wylie.registration.domain.BillingTxType;
 import com.wylie.registration.domain.CourseOffering;
 import com.wylie.registration.domain.Enrollment;
 import com.wylie.registration.domain.EnrollmentStatus;
-import com.wylie.registration.domain.Grade;
-import com.wylie.registration.domain.GradeValue;
 import com.wylie.registration.domain.OfferingStatus;
 import com.wylie.registration.domain.RegistrationStatus;
 import com.wylie.registration.domain.Schedule;
@@ -21,7 +19,6 @@ import com.wylie.registration.legacy.CatalogSnapshot;
 import com.wylie.registration.legacy.LegacyCourse;
 import com.wylie.registration.repo.CourseOfferingRepository;
 import com.wylie.registration.repo.EnrollmentRepository;
-import com.wylie.registration.repo.GradeRepository;
 import com.wylie.registration.repo.ScheduleItemRepository;
 import com.wylie.registration.repo.ScheduleRepository;
 import com.wylie.registration.web.dto.CourseOfferingView;
@@ -32,6 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -61,7 +59,6 @@ public class ScheduleService {
     private final ScheduleItemRepository itemRepo;
     private final CourseOfferingRepository offeringRepo;
     private final EnrollmentRepository enrollmentRepo;
-    private final GradeRepository gradeRepo;
     private final CatalogService catalogService;
     private final BillingService billingService;
     private final OfferingQueryService offeringQuery;
@@ -69,14 +66,12 @@ public class ScheduleService {
 
     public ScheduleService(ScheduleRepository scheduleRepo, ScheduleItemRepository itemRepo,
                            CourseOfferingRepository offeringRepo, EnrollmentRepository enrollmentRepo,
-                           GradeRepository gradeRepo, CatalogService catalogService,
-                           BillingService billingService, OfferingQueryService offeringQuery,
-                           StudentQueryService studentQuery) {
+                           CatalogService catalogService, BillingService billingService,
+                           OfferingQueryService offeringQuery, StudentQueryService studentQuery) {
         this.scheduleRepo = scheduleRepo;
         this.itemRepo = itemRepo;
         this.offeringRepo = offeringRepo;
         this.enrollmentRepo = enrollmentRepo;
-        this.gradeRepo = gradeRepo;
         this.catalogService = catalogService;
         this.billingService = billingService;
         this.offeringQuery = offeringQuery;
@@ -96,6 +91,11 @@ public class ScheduleService {
 
     public ScheduleView mySchedule(Long studentId) {
         return studentQuery.mySchedule(studentId);
+    }
+
+    /** 查看指定学期课表（不传则当前学期；历史学期用于只读查看） */
+    public ScheduleView mySchedule(Long studentId, Long semesterId) {
+        return studentQuery.mySchedule(studentId, semesterId);
     }
 
     // ------------------------------------------------------------------
@@ -200,7 +200,8 @@ public class ScheduleService {
         BigDecimal amount = billingService.tuitionFor(offering.getCredits());
         billingService.create(BillingTxType.ADJUSTMENT, studentId, semester.getId(), amount,
                 "调整期加课：" + offering.getCourseNo() + " " + offering.getTitle());
-        return studentQuery.mySchedule(studentId);
+        return withNotice(studentQuery.mySchedule(studentId),
+                "调整期加课成功，已生成差额账单：+" + amount.setScale(2, RoundingMode.HALF_UP).toPlainString() + " 元");
     }
 
     @Transactional
@@ -231,7 +232,8 @@ public class ScheduleService {
         BigDecimal amount = billingService.tuitionFor(offering.getCredits()).negate();
         billingService.create(BillingTxType.ADJUSTMENT, studentId, semester.getId(), amount,
                 "调整期退课：" + offering.getCourseNo() + " " + offering.getTitle());
-        return studentQuery.mySchedule(studentId);
+        return withNotice(studentQuery.mySchedule(studentId),
+                "调整期退课成功，已生成退费差额账单：" + amount.setScale(2, RoundingMode.HALF_UP).toPlainString() + " 元");
     }
 
     // ------------------------------------------------------------------
@@ -367,13 +369,7 @@ public class ScheduleService {
     }
 
     private void checkPrerequisites(Long studentId, CatalogSnapshot snapshot, List<CourseOffering> offerings) {
-        Set<Long> passedOfferingIds = gradeRepo.findByStudentId(studentId).stream()
-                .filter(g -> g.getGradeValue() != null && GradeValue.PASSED.contains(g.getGradeValue()))
-                .map(Grade::getOfferingId)
-                .collect(Collectors.toSet());
-        Set<String> passedCourses = offeringRepo.findAllById(passedOfferingIds).stream()
-                .map(CourseOffering::getCourseNo)
-                .collect(Collectors.toSet());
+        Set<String> passedCourses = studentQuery.passedCourseNos(studentId);
         for (CourseOffering offering : offerings) {
             for (String prereq : snapshot.prerequisitesOf(offering.getCourseNo())) {
                 if (!passedCourses.contains(prereq)) {
@@ -461,5 +457,10 @@ public class ScheduleService {
         enrollment.setStatus(EnrollmentStatus.REGISTERED);
         enrollment.setEnrolledAt(LocalDateTime.now());
         enrollmentRepo.save(enrollment);
+    }
+
+    private ScheduleView withNotice(ScheduleView view, String notice) {
+        return new ScheduleView(view.scheduleId(), view.status(), view.semesterId(), view.semesterName(),
+                view.registrationStatus(), view.adjustmentOpen(), view.adjustmentWindow(), view.items(), notice);
     }
 }

@@ -4,13 +4,9 @@
     <fieldset class="win-group">
       <legend>成绩单查询</legend>
       <div class="toolbar" style="margin-bottom: 0">
-        <label>学期</label>
-        <select v-model="semesterId" class="win-select">
-          <option value="">上一学期（默认）</option>
-          <option value="2">当前学期（2026-2027 学年第一学期）</option>
-        </select>
+        <SemesterSelect v-model="semesterId" label="学期" placeholder="上一学期（默认）" @change="load" />
         <Win95Button label="查询成绩单" is-default @click="load" />
-        <span class="muted">成绩数据仅本人可见，系统已做访问控制。</span>
+        <span class="muted">成绩数据仅本人可见，系统已做访问控制；默认展示上一学期。</span>
       </div>
     </fieldset>
 
@@ -45,11 +41,14 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { studentApi } from '../../api'
+import { useSemestersStore } from '../../stores/semesters'
 import { useUiStore } from '../../stores/ui'
+import SemesterSelect from '../../components/SemesterSelect.vue'
 import Win95Button from '../../components/Win95Button.vue'
 import Win95Table from '../../components/Win95Table.vue'
 
 const ui = useUiStore()
+const semestersStore = useSemestersStore()
 const semesterId = ref('')
 const report = ref(null)
 
@@ -94,5 +93,9 @@ async function load() {
   }
 }
 
-onMounted(load)
+onMounted(async () => {
+  await semestersStore.load()
+  semesterId.value = semestersStore.previous ? semestersStore.previous.id : ''
+  await load()
+})
 </script>

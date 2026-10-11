@@ -1,12 +1,13 @@
-<!-- 教授：提交成绩（Submit Grades）—— 仅可录入上一学期本人所授课程班成绩 -->
+<!-- 教授：提交成绩（Submit Grades）—— 可为任意"已开始且非当前"学期的本人授课课程班录入/修改成绩 -->
 <template>
   <div>
     <fieldset class="win-group">
-      <legend>选择上学期课程班</legend>
-      <div class="toolbar" style="margin-bottom: 0">
+      <legend>选择学期与课程班</legend>
+      <div class="toolbar" style="margin-bottom: 4px">
+        <SemesterSelect v-model="semesterId" label="学期" :only-gradeable="true" @change="loadOfferings" />
         <select v-model="selectedId" class="win-select" style="min-width: 320px" @change="loadSheet">
-          <option :value="null">— 请选择上一学期课程班 —</option>
-          <option v-for="o in previous" :key="o.offeringId" :value="o.offeringId">
+          <option :value="null">— 请选择课程班 —</option>
+          <option v-for="o in offerings" :key="o.offeringId" :value="o.offeringId">
             {{ o.courseNo }} {{ o.title }}（{{ o.timeText }}）
           </option>
         </select>
@@ -15,13 +16,14 @@
       </div>
       <div class="hint">
         成绩等级：A / B / C / D / F / I，可留空表示尚未录入；支持后续补录与修改。仅授课教授本人可录入。
+        可选学期范围为「已开始且非当前」的学期（当前学期与未来学期尚不可录入成绩）。
       </div>
     </fieldset>
 
     <fieldset class="win-group">
       <legend>成绩录入</legend>
       <Win95Table :columns="columns" :rows="rows" row-key="studentId" max-height="360px"
-        empty-text="请选择上学期课程班，或该课程班暂无学生">
+        empty-text="请选择课程班，或该课程班暂无学生">
         <template #input="{ row }">
           <select v-model="row.editValue" class="win-select" style="min-width: 96px">
             <option value="">（留空）</option>
@@ -45,12 +47,16 @@
 <script setup>
 import { onMounted, ref } from 'vue'
 import { professorApi } from '../../api'
+import { useSemestersStore } from '../../stores/semesters'
 import { useUiStore } from '../../stores/ui'
+import SemesterSelect from '../../components/SemesterSelect.vue'
 import Win95Button from '../../components/Win95Button.vue'
 import Win95Table from '../../components/Win95Table.vue'
 
 const ui = useUiStore()
-const previous = ref([])
+const semestersStore = useSemestersStore()
+const semesterId = ref('')
+const offerings = ref([])
 const selectedId = ref(null)
 const rows = ref([])
 const busy = ref(false)
@@ -63,15 +69,21 @@ const columns = [
   { key: 'input', label: '录入 / 修改', width: '150px' }
 ]
 
-async function loadPrevious() {
-  previous.value = await professorApi.previousOfferings()
-  if (!previous.value.length) {
-    await ui.alert('你没有上学期授课记录，无法录入成绩。', '无授课记录')
-    return
-  }
-  if (previous.value.length === 1) {
-    selectedId.value = previous.value[0].offeringId
-    await loadSheet()
+async function loadOfferings() {
+  selectedId.value = null
+  rows.value = []
+  try {
+    offerings.value = await professorApi.myOfferings(semesterId.value || undefined)
+    if (!offerings.value.length) {
+      await ui.alert('该学期你没有授课记录，无法录入成绩。', '无授课记录')
+      return
+    }
+    if (offerings.value.length === 1) {
+      selectedId.value = offerings.value[0].offeringId
+      await loadSheet()
+    }
+  } catch (e) {
+    await ui.alert(e.message, '加载失败')
   }
 }
 
@@ -101,7 +113,7 @@ async function save() {
       gradeValue: r.editValue ? r.editValue : null
     }))
     const saved = await professorApi.saveGrades(selectedId.value, payload)
-    rows.value = saved.map((r) => ({ ...r, editValue: r.gradeValue || '' }))
+    rows.value = saved.map((r) => ({ ...r, gradeValue: r.gradeValue, editValue: r.gradeValue || '' }))
     await ui.alert('成绩已保存。', '保存成功')
   } catch (e) {
     await ui.alert(e.message, '保存失败')
@@ -111,10 +123,13 @@ async function save() {
 }
 
 onMounted(async () => {
-  try {
-    await loadPrevious()
-  } catch (e) {
-    await ui.alert(e.message, '加载失败')
+  await semestersStore.load()
+  const gradeable = semestersStore.gradeable
+  if (!gradeable.length) {
+    await ui.alert('目前没有可录入成绩的学期（成绩录入仅对已开始且非当前的历史学期开放）。', '暂无可录入学期')
+    return
   }
+  semesterId.value = gradeable[0].id
+  await loadOfferings()
 })
 </script>

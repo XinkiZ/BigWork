@@ -25,10 +25,8 @@
       <template #status>
         <span class="cell fixed">👤 {{ auth.roleText }}：{{ auth.user?.name }}（{{ auth.user?.username }}）</span>
         <span class="cell">{{ statusText }}</span>
-        <span class="cell fixed">学期：{{ auth.user?.currentSemesterName || '—' }}</span>
-        <span class="cell fixed">
-          注册状态：{{ auth.user?.registrationStatus === 'CLOSED' ? '已关闭' : '开放中' }}
-        </span>
+        <span class="cell fixed">学期：{{ currentSemesterName }}</span>
+        <span class="cell fixed">注册状态：{{ registrationStatusText }}</span>
       </template>
     </Win95Window>
 
@@ -38,9 +36,10 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onBeforeUnmount, ref } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from './stores/auth'
+import { useSemestersStore } from './stores/semesters'
 import { useUiStore } from './stores/ui'
 import Win95Window from './components/Win95Window.vue'
 import Win95MenuBar from './components/Win95MenuBar.vue'
@@ -48,9 +47,40 @@ import Win95Taskbar from './components/Win95Taskbar.vue'
 import Win95Dialog from './components/Win95Dialog.vue'
 
 const auth = useAuthStore()
+const semestersStore = useSemestersStore()
 const ui = useUiStore()
 const route = useRoute()
 const router = useRouter()
+
+/** 顶栏「学期/注册状态」实时取自 /api/semesters，避免登录快照过期 */
+const currentSemesterName = computed(() => {
+  const current = semestersStore.current
+  return current ? current.name : auth.user?.currentSemesterName || '—'
+})
+const registrationStatusText = computed(() => {
+  const current = semestersStore.current
+  const status = current ? current.registrationStatus : auth.user?.registrationStatus
+  return status === 'CLOSED' ? '已关闭' : '开放中'
+})
+
+async function refreshSemesters() {
+  if (!auth.loggedIn) return
+  try {
+    await semestersStore.load(true)
+  } catch (e) {
+    /* 顶栏静默失败，不打断当前页面 */
+  }
+}
+
+watch(
+  () => auth.loggedIn,
+  (logged) => {
+    if (logged) refreshSemesters()
+  }
+)
+router.afterEach(() => {
+  refreshSemesters()
+})
 
 const isLogin = computed(() => route.path === '/login')
 const windowTitle = computed(() => `Wylie College 学生选课注册系统 —— ${route.meta.title || '工作台'}`)
@@ -58,7 +88,9 @@ const windowTitle = computed(() => `Wylie College 学生选课注册系统 —�
 const STUDENT_ICONS = [
   { label: '课程注册', icon: '📝', path: '/student' },
   { label: '我的课表', icon: '📅', path: '/student/schedule' },
-  { label: '电子成绩单', icon: '📄', path: '/student/report-card' }
+  { label: '电子成绩单', icon: '📄', path: '/student/report-card' },
+  { label: '学业记录', icon: '📊', path: '/student/transcript' },
+  { label: '我的账单', icon: '🧾', path: '/student/billing' }
 ]
 
 const PROFESSOR_ICONS = [
@@ -71,6 +103,8 @@ const PROFESSOR_ICONS = [
 const REGISTRAR_ICONS = [
   { label: '学生信息', icon: '🧑‍🎓', path: '/registrar' },
   { label: '教授信息', icon: '🧑‍🏫', path: '/registrar/professors' },
+  { label: '学期管理', icon: '📖', path: '/registrar/semesters' },
+  { label: '课程班管理', icon: '🏫', path: '/registrar/offerings' },
   { label: '关闭注册', icon: '🔒', path: '/registrar/close-registration' },
   { label: '计费监控', icon: '💰', path: '/registrar/billing' },
   { label: '系统面板', icon: '⚙️', path: '/system' }
@@ -97,13 +131,14 @@ const menus = computed(() => [
     items: [
       { label: '刷新当前页面', command: 'refresh' },
       { separator: true },
-      { label: '注册状态：' + (auth.user?.registrationStatus === 'CLOSED' ? '已关闭' : '开放中'), disabled: true }
+      { label: '当前学期：' + currentSemesterName.value, disabled: true },
+      { label: '注册状态：' + registrationStatusText.value, disabled: true }
     ]
   },
   {
     label: '帮助(H)',
     items: [
-      { label: '系统演示面板', path: '/system', disabled: !(auth.isRegistrar || auth.isProfessor) },
+      { label: '系统演示面板' + (auth.isRegistrar ? '' : '（只读）'), path: '/system' },
       { label: '关于本系统', command: 'about' }
     ]
   }
@@ -132,7 +167,7 @@ async function onMenuCommand(item) {
   if (item.command === 'refresh') return router.go(0)
   if (item.command === 'about') {
     return ui.alert(
-      'Wylie College 学生选课注册系统 v1.0\n' +
+      'Wylie College 学生选课注册系统 v2.0（多学期迭代）\n' +
         '软件工程课程设计 —— 小组项目\n' +
         '技术栈：Vue3 + Spring Boot 3 + MySQL 8\n' +
         '界面规范：Windows 95/98 桌面交互规范',
@@ -172,6 +207,7 @@ function onUnauthorizedEvent(event) {
 
 onMounted(() => {
   window.addEventListener('wylie:unauthorized', onUnauthorizedEvent)
+  refreshSemesters()
 })
 onBeforeUnmount(() => {
   window.removeEventListener('wylie:unauthorized', onUnauthorizedEvent)

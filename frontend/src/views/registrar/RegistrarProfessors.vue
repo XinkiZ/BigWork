@@ -16,7 +16,7 @@
         <legend>教授列表</legend>
         <Win95Table
           :columns="columns"
-          :rows="professors"
+          :rows="pageRows"
           row-key="id"
           :selected-key="selectedRow ? selectedRow.id : null"
           max-height="330px"
@@ -26,6 +26,11 @@
             <span class="badge" :class="row.status === 'ACTIVE' ? 'ok' : 'warn'">{{ statusText(row.status) }}</span>
           </template>
         </Win95Table>
+        <div class="toolbar" style="margin: 6px 0 0 0">
+          <Win95Button label="上一页" size="small" :disabled="page <= 1" @click="page--" />
+          <Win95Button label="下一页" size="small" :disabled="page >= totalPages" @click="page++" />
+          <span class="badge">第 {{ page }} / {{ totalPages }} 页（每页 20 条，共 {{ professors.length }} 条）</span>
+        </div>
       </fieldset>
 
       <fieldset class="win-group">
@@ -69,7 +74,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { registrarApi } from '../../api'
 import { useUiStore } from '../../stores/ui'
 import Win95Button from '../../components/Win95Button.vue'
@@ -80,6 +85,11 @@ const professors = ref([])
 const keyword = ref('')
 const selectedRow = ref(null)
 const busy = ref(false)
+
+const pageSize = 20
+const page = ref(1)
+const totalPages = computed(() => Math.max(1, Math.ceil(professors.value.length / pageSize)))
+const pageRows = computed(() => professors.value.slice((page.value - 1) * pageSize, page.value * pageSize))
 
 const columns = [
   { key: 'id', label: 'ID', width: '52px', align: 'center' },
@@ -106,6 +116,7 @@ function statusText(status) {
 
 async function load() {
   professors.value = await registrarApi.professors(keyword.value || undefined)
+  page.value = 1
 }
 
 async function showAll() {

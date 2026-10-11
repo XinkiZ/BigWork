@@ -158,6 +158,65 @@ class AuthApiTest extends AbstractIntegrationTest {
     }
 
     @Test
+    @DisplayName("未携带令牌访问学期列表返回 401")
+    void semesterListRequiresLogin() throws Exception {
+        mockMvc.perform(get("/api/semesters"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    @DisplayName("学生可访问学期列表与学业记录接口")
+    void studentCanAccessSemesterListAndTranscript() throws Exception {
+        mockMvc.perform(get("/api/semesters").header("Authorization", "Bearer " + studentToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(3));
+
+        mockMvc.perform(get("/api/student/transcript").header("Authorization", "Bearer " + studentToken()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.studentNo").value("2026001"))
+                .andExpect(jsonPath("$.semesters").isArray());
+    }
+
+    @Test
+    @DisplayName("学生访问学期管理与课程班管理接口返回 403（多学期迭代越权防护）")
+    void studentCannotAccessRegistrarSemesterAndOfferingApi() throws Exception {
+        mockMvc.perform(post("/api/registrar/semesters")
+                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"2099-1\",\"name\":\"x\",\"startDate\":\"2099-01-01\",\"endDate\":\"2099-06-01\"}")
+                        .header("Authorization", "Bearer " + studentToken()))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/registrar/offerings").param("semesterId", "2")
+                        .header("Authorization", "Bearer " + studentToken()))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/registrar/courses")
+                        .header("Authorization", "Bearer " + studentToken()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("教授访问学生账单与学业记录接口返回 403（越权防护）")
+    void professorCannotAccessStudentBillingApi() throws Exception {
+        mockMvc.perform(get("/api/student/billing-transactions")
+                        .header("Authorization", "Bearer " + professorToken()))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/api/student/transcript")
+                        .header("Authorization", "Bearer " + professorToken()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("学生访问教授授课列表接口返回 403（越权防护）")
+    void studentCannotAccessProfessorApi() throws Exception {
+        mockMvc.perform(get("/api/professor/offerings")
+                        .header("Authorization", "Bearer " + studentToken()))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     @DisplayName("业务冲突（先修不满足）返回 409 且带统一错误码")
     void businessConflictReturns409() throws Exception {
         // 李思远（学号 2026005）上一学期 CS101 成绩为 F，选 2 号课程班（先修 CS101）应被拒绝

@@ -29,6 +29,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -103,18 +104,12 @@ public class ProfessorService {
         return views;
     }
 
-    public List<CourseOfferingView> myOfferings(Long professorId) {
-        Semester semester = studentQuery.currentSemester();
+    /** 我在指定学期的授课课程班（不传则当前学期；历史学期用于名单查看与成绩补录） */
+    public List<CourseOfferingView> myOfferings(Long professorId, Long semesterId) {
+        Semester semester = semesterId == null ? studentQuery.currentSemester() : studentQuery.semesterById(semesterId);
         List<CourseOffering> offerings = offeringRepo
                 .findBySemesterIdAndProfessorIdOrderByIdAsc(semester.getId(), professorId);
         return offeringQuery.toViews(offerings, safeSnapshot());
-    }
-
-    public List<CourseOfferingView> previousOfferings(Long professorId) {
-        Semester previous = studentQuery.previousSemester();
-        return offeringQuery.toViews(
-                offeringRepo.findBySemesterIdAndProfessorIdOrderByIdAsc(previous.getId(), professorId),
-                safeSnapshot());
     }
 
     @Transactional
@@ -189,7 +184,7 @@ public class ProfessorService {
 
     public List<GradeRow> gradeSheet(Long professorId, Long offeringId) {
         CourseOffering offering = verifyOwner(professorId, offeringId);
-        requirePreviousSemester(offering);
+        requireGradeableSemester(offering);
         Map<Long, Grade> grades = gradeRepo.findByOfferingId(offering.getId()).stream()
                 .collect(Collectors.toMap(Grade::getStudentId, Function.identity(), (a, b) -> a));
         return enrollmentRepo.findByOfferingIdAndStatus(offering.getId(), EnrollmentStatus.REGISTERED).stream()
@@ -203,11 +198,11 @@ public class ProfessorService {
                 .toList();
     }
 
-    /** 录入/修改成绩：仅授课教授本人、仅上一学期课程班、支持留空补录 */
+    /** 录入/修改成绩：仅授课教授本人、仅已开始的历史学期课程班、支持留空补录 */
     @Transactional
     public List<GradeRow> saveGrades(Long professorId, Long offeringId, GradeSaveRequest request) {
         CourseOffering offering = verifyOwner(professorId, offeringId);
-        requirePreviousSemester(offering);
+        requireGradeableSemester(offering);
         Set<Long> roster = enrollmentRepo
                 .findByOfferingIdAndStatus(offering.getId(), EnrollmentStatus.REGISTERED).stream()
                 .map(Enrollment::getStudentId)
@@ -257,10 +252,15 @@ public class ProfessorService {
         return offering;
     }
 
-    private void requirePreviousSemester(CourseOffering offering) {
-        Semester previous = studentQuery.previousSemester();
-        if (!offering.getSemesterId().equals(previous.getId())) {
-            throw new BusinessException(ErrorCodes.STATE_ERROR, "只能录入上一学期课程班的成绩");
+    /** 成绩可录入范围：目标学期已开始且非当前学期（默认为上一学期，支持为更早学期补录） */
+    private void requireGradeableSemester(CourseOffering offering) {
+        Semester semester = studentQuery.semesterById(offering.getSemesterId());
+        Semester current = studentQuery.currentSemester();
+        if (semester.getId().equals(current.getId())) {
+            throw new BusinessException(ErrorCodes.STATE_ERROR, "当前学期尚未结束，暂不能录入成绩");
+        }
+        if (semester.getStartDate() == null || semester.getStartDate().isAfter(LocalDate.now())) {
+            throw new BusinessException(ErrorCodes.STATE_ERROR, "该学期尚未开始，不能录入成绩");
         }
     }
 

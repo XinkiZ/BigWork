@@ -6,23 +6,29 @@ export const authApi = {
   me: () => http.get('/auth/me')
 }
 
+/** 学期列表（全角色可用，用于各页面学期切换） */
+export const semesterApi = {
+  list: () => http.get('/semesters')
+}
+
 /** 学生用例 */
 export const studentApi = {
   catalog: () => http.get('/student/catalog'),
-  schedule: () => http.get('/student/schedule'),
+  schedule: (semesterId) => http.get('/student/schedule', { params: { semesterId } }),
   saveDraft: (items) => http.post('/student/schedule/draft', { items }),
   submit: (items) => http.post('/student/schedule/submit', { items }),
   remove: () => http.delete('/student/schedule'),
   adjustmentAdd: (offeringId) => http.post(`/student/adjustment/add/${offeringId}`),
   adjustmentDrop: (offeringId) => http.post(`/student/adjustment/drop/${offeringId}`),
-  reportCard: (semesterId) => http.get('/student/report-card', { params: { semesterId } })
+  reportCard: (semesterId) => http.get('/student/report-card', { params: { semesterId } }),
+  transcript: () => http.get('/student/transcript'),
+  billingTransactions: (semesterId) => http.get('/student/billing-transactions', { params: { semesterId } })
 }
 
 /** 教授用例 */
 export const professorApi = {
   qualifiedCourses: () => http.get('/professor/qualified-courses'),
-  myOfferings: () => http.get('/professor/offerings'),
-  previousOfferings: () => http.get('/professor/offerings/previous'),
+  myOfferings: (semesterId) => http.get('/professor/offerings', { params: { semesterId } }),
   select: (offeringId) => http.post(`/professor/offerings/${offeringId}/select`),
   unselect: (offeringId) => http.delete(`/professor/offerings/${offeringId}/select`),
   roster: (offeringId) => http.get(`/professor/offerings/${offeringId}/roster`),
@@ -42,7 +48,20 @@ export const registrarApi = {
   deleteProfessor: (id) => http.delete(`/registrar/professors/${id}`),
   closeRegistration: () => http.post('/registrar/close-registration'),
   billingTransactions: (semesterId) => http.get('/registrar/billing-transactions', { params: { semesterId } }),
-  retryBilling: () => http.post('/registrar/billing-transactions/retry')
+  retryBilling: () => http.post('/registrar/billing-transactions/retry'),
+
+  /* 学期管理 */
+  semesters: () => http.get('/semesters'),
+  createSemester: (payload) => http.post('/registrar/semesters', payload),
+  updateSemester: (id, payload) => http.put(`/registrar/semesters/${id}`, payload),
+  setCurrentSemester: (id) => http.post(`/registrar/semesters/${id}/set-current`),
+
+  /* 课程班（开班）管理 */
+  courses: () => http.get('/registrar/courses'),
+  offerings: (semesterId) => http.get('/registrar/offerings', { params: { semesterId } }),
+  createOffering: (payload) => http.post('/registrar/offerings', payload),
+  updateOffering: (id, payload) => http.put(`/registrar/offerings/${id}`, payload),
+  deleteOffering: (id) => http.delete(`/registrar/offerings/${id}`)
 }
 
 /** 系统演示开关 */

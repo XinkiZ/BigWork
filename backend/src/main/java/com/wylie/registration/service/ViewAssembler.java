@@ -4,10 +4,13 @@ import com.wylie.registration.domain.CourseOffering;
 import com.wylie.registration.legacy.CatalogSnapshot;
 import com.wylie.registration.legacy.LegacyCourse;
 import com.wylie.registration.web.dto.CourseOfferingView;
+import com.wylie.registration.web.dto.PrerequisiteView;
 import org.springframework.stereotype.Component;
 
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 
 /** 视图装配工具 */
 @Component
@@ -22,14 +25,22 @@ public class ViewAssembler {
 
     public CourseOfferingView offering(CourseOffering o, long enrolledCount, String professorName,
                                        CatalogSnapshot snapshot) {
-        List<String> prereqTitles = List.of();
+        return offering(o, enrolledCount, professorName, snapshot, null);
+    }
+
+    /** passedCourses 非空表示学生场景：先修课程标注是否已通过；否则 passed 为 null（仅展示名称） */
+    public CourseOfferingView offering(CourseOffering o, long enrolledCount, String professorName,
+                                       CatalogSnapshot snapshot, Set<String> passedCourses) {
+        List<PrerequisiteView> prerequisites = List.of();
         if (snapshot != null) {
-            prereqTitles = snapshot.prerequisitesOf(o.getCourseNo()).stream()
+            prerequisites = snapshot.prerequisitesOf(o.getCourseNo()).stream()
                     .map(no -> {
                         LegacyCourse c = snapshot.courses().get(no);
-                        return c == null ? no : no + " " + c.title();
+                        String title = c == null ? "" : c.title();
+                        Boolean passed = passedCourses == null ? null : passedCourses.contains(no);
+                        return new PrerequisiteView(no, title, passed);
                     })
-                    .sorted()
+                    .sorted(Comparator.comparing(PrerequisiteView::courseNo))
                     .toList();
         }
         String start = o.getStartTime().format(TIME);
@@ -39,6 +50,6 @@ public class ViewAssembler {
                 o.getId(), o.getCourseNo(), o.getTitle(), o.getCredits(), o.getDepartment(),
                 o.getProfessorId(), professorName, o.getDayOfWeek(), dayText(o.getDayOfWeek()),
                 start, end, o.getRoom(), o.getCapacity(), enrolledCount, full, o.getStatus().name(),
-                prereqTitles, dayText(o.getDayOfWeek()) + " " + start + "-" + end);
+                prerequisites, dayText(o.getDayOfWeek()) + " " + start + "-" + end);
     }
 }

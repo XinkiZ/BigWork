@@ -131,6 +131,18 @@ public class BillingService {
         List<BillingTransaction> transactions = semesterId == null
                 ? txRepo.findAllByOrderByIdDesc()
                 : txRepo.findBySemesterIdOrderByIdAsc(semesterId);
+        return toViews(transactions);
+    }
+
+    /** 学生查看本人账单（可按学期筛选） */
+    public List<BillingTransactionView> listForStudent(Long studentId, Long semesterId) {
+        List<BillingTransaction> transactions = semesterId == null
+                ? txRepo.findByStudentIdOrderByIdDesc(studentId)
+                : txRepo.findByStudentIdAndSemesterIdOrderByIdDesc(studentId, semesterId);
+        return toViews(transactions);
+    }
+
+    private List<BillingTransactionView> toViews(List<BillingTransaction> transactions) {
         Map<Long, Student> students = studentRepo.findAll().stream()
                 .collect(Collectors.toMap(Student::getId, Function.identity()));
         Map<Long, Semester> semesters = semesterRepo.findAll().stream()

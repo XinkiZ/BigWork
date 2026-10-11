@@ -20,6 +20,6 @@ public record CourseOfferingView(
         long enrolledCount,
         boolean full,
         String status,
-        List<String> prerequisiteTitles,
+        List<PrerequisiteView> prerequisites,
         String timeText) {
 }

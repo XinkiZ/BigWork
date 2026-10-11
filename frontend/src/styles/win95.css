@@ -551,6 +551,17 @@ table.win-table tbody tr.selected td {
   border-color: #204080;
 }
 
+.money-refund {
+  color: #a80000;
+  font-weight: bold;
+}
+
+.semester-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .mono {
   font-family: 'Lucida Console', Consolas, monospace;
 }

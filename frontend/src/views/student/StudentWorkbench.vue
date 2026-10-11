@@ -52,10 +52,18 @@
             {{ row.enrolledCount }}/{{ row.capacity }}{{ row.full ? ' 已满' : '' }}
           </span>
         </template>
-        <template #prerequisiteTitles="{ row }">
-          <span v-if="row.prerequisiteTitles && row.prerequisiteTitles.length">
-            {{ row.prerequisiteTitles.join('、') }}
-          </span>
+        <template #prerequisites="{ row }">
+          <template v-if="row.prerequisites && row.prerequisites.length">
+            <span
+              v-for="item in row.prerequisites"
+              :key="item.courseNo"
+              class="badge"
+              :class="item.passed === true ? 'ok' : item.passed === false ? 'err' : ''"
+              :title="item.title"
+            >
+              {{ item.passed === true ? '✓' : item.passed === false ? '✗' : '•' }} {{ item.courseNo }}
+            </span>
+          </template>
           <span v-else class="muted">无</span>
         </template>
         <template #status="{ row }">
@@ -181,7 +189,7 @@ const catalogColumns = [
   { key: 'timeText', label: '上课时间', width: '150px' },
   { key: 'room', label: '教室', width: '66px' },
   { key: 'full', label: '选课人数', width: '100px' },
-  { key: 'prerequisiteTitles', label: '先修课程', width: '130px' },
+  { key: 'prerequisites', label: '先修课程（达成情况）', width: '160px' },
   { key: 'status', label: '状态', width: '76px' }
 ]
 
@@ -392,7 +400,7 @@ async function adjustmentAdd(offering) {
   await guard(async () => {
     schedule.value = await studentApi.adjustmentAdd(offering.offeringId)
     await Promise.all([loadSchedule(), loadCatalog()])
-    await ui.alert(`已加选【${offering.title}】，系统已生成差额账单。`, '加选成功')
+    await ui.alert(schedule.value.notice || `已加选【${offering.title}】，系统已生成差额账单。`, '加选成功')
   }, '加选')
 }
 
@@ -402,7 +410,7 @@ async function adjustmentDrop(offering) {
   await guard(async () => {
     schedule.value = await studentApi.adjustmentDrop(offering.offeringId)
     await Promise.all([loadSchedule(), loadCatalog()])
-    await ui.alert(`已退选【${offering.title}】。`, '退选成功')
+    await ui.alert(schedule.value.notice || `已退选【${offering.title}】。`, '退选成功')
   }, '退选')
 }
 

@@ -4,6 +4,7 @@
     <fieldset class="win-group">
       <legend>计费交易状态</legend>
       <div class="toolbar" style="margin-bottom: 0">
+        <SemesterSelect v-model="semesterId" :include-all="true" all-label="全部学期" label="学期" @change="load" />
         <Win95Button label="刷新" @click="load" />
         <Win95Button label="手动触发一次重试" is-default :disabled="busy" @click="retry" />
         <Win95Button
@@ -24,7 +25,7 @@
 
     <fieldset class="win-group">
       <legend>交易明细</legend>
-      <Win95Table :columns="columns" :rows="rows" row-key="id" max-height="420px" empty-text="暂无计费交易（请先执行关闭注册）">
+      <Win95Table :columns="columns" :rows="pageRows" row-key="id" max-height="420px" empty-text="暂无计费交易（请先执行关闭注册）">
         <template #txType="{ row }">
           <span class="badge" :class="row.txType === 'INITIAL' ? 'info' : ''">
             {{ row.txType === 'INITIAL' ? '学期账单' : '调整期差额' }}
@@ -36,6 +37,11 @@
           </span>
         </template>
       </Win95Table>
+      <div class="toolbar" style="margin: 6px 0 0 0">
+        <Win95Button label="上一页" size="small" :disabled="page <= 1" @click="page--" />
+        <Win95Button label="下一页" size="small" :disabled="page >= totalPages" @click="page++" />
+        <span class="badge">第 {{ page }} / {{ totalPages }} 页（每页 20 条，共 {{ rows.length }} 条）</span>
+      </div>
     </fieldset>
   </div>
 </template>
@@ -44,11 +50,18 @@
 import { computed, onMounted, ref } from 'vue'
 import { registrarApi, systemApi } from '../../api'
 import { useUiStore } from '../../stores/ui'
+import SemesterSelect from '../../components/SemesterSelect.vue'
 import Win95Button from '../../components/Win95Button.vue'
 import Win95Table from '../../components/Win95Table.vue'
 
 const ui = useUiStore()
+const semesterId = ref('')
 const rows = ref([])
+
+const pageSize = 20
+const page = ref(1)
+const totalPages = computed(() => Math.max(1, Math.ceil(rows.value.length / pageSize)))
+const pageRows = computed(() => rows.value.slice((page.value - 1) * pageSize, page.value * pageSize))
 const available = ref(true)
 const retryInterval = ref(30)
 const busy = ref(false)
@@ -74,7 +87,8 @@ function statusText(status) {
 
 async function load() {
   try {
-    rows.value = await registrarApi.billingTransactions()
+    rows.value = await registrarApi.billingTransactions(semesterId.value || undefined)
+    page.value = 1
     const status = await systemApi.status()
     available.value = !!status.billing.available
     retryInterval.value = status.billing.retryIntervalSeconds

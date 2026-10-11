@@ -2,8 +2,14 @@ package com.wylie.registration;
 
 import com.wylie.registration.common.BusinessException;
 import com.wylie.registration.common.ErrorCodes;
+import com.wylie.registration.domain.CourseOffering;
+import com.wylie.registration.domain.Enrollment;
+import com.wylie.registration.domain.EnrollmentStatus;
+import com.wylie.registration.domain.OfferingStatus;
 import com.wylie.registration.domain.RegistrationStatus;
+import com.wylie.registration.domain.Semester;
 import com.wylie.registration.repo.CourseOfferingRepository;
+import com.wylie.registration.repo.EnrollmentRepository;
 import com.wylie.registration.repo.SemesterRepository;
 import com.wylie.registration.service.ProfessorService;
 import com.wylie.registration.web.dto.CourseOfferingView;
@@ -15,6 +21,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -33,6 +41,9 @@ class ProfessorServiceTest extends AbstractIntegrationTest {
 
     @Autowired
     private SemesterRepository semesterRepo;
+
+    @Autowired
+    private EnrollmentRepository enrollmentRepo;
 
     private BusinessException expectFailure(String code, Runnable action) {
         BusinessException ex = assertThrows(BusinessException.class, action::run);
@@ -96,7 +107,7 @@ class ProfessorServiceTest extends AbstractIntegrationTest {
 
         assertEquals(1L, view.professorId());
         assertEquals("张伟", view.professorName());
-        assertTrue(professorService.myOfferings(1L).stream().anyMatch(o -> o.offeringId().equals(4L)));
+        assertTrue(professorService.myOfferings(1L, null).stream().anyMatch(o -> o.offeringId().equals(4L)));
     }
 
     @Test
@@ -181,9 +192,69 @@ class ProfessorServiceTest extends AbstractIntegrationTest {
     }
 
     @Test
-    @DisplayName("提交成绩：只能录入上一学期课程班")
-    void onlyPreviousSemesterAllowed() {
+    @DisplayName("提交成绩：当前学期尚未结束，不能录入")
+    void gradesRejectedForCurrentSemester() {
         expectFailure(ErrorCodes.STATE_ERROR,
                 () -> professorService.saveGrades(1L, 1L, grades(new GradeSaveRequest.GradeLine(6L, "A"))));
+    }
+
+    @Test
+    @DisplayName("提交成绩：更早的历史学期也可补录（不限于上一学期）")
+    void gradesAllowedForOlderSemester() {
+        Semester older = semester("2024-2025-1", "2024-2025学年第一学期",
+                LocalDate.of(2024, 9, 1), LocalDate.of(2025, 1, 10));
+        CourseOffering offering = confirmedOffering(older.getId(), "CS101");
+        enroll(offering.getId(), 1L);
+
+        professorService.saveGrades(1L, offering.getId(), grades(new GradeSaveRequest.GradeLine(1L, "A")));
+        assertTrue(professorService.gradeSheet(1L, offering.getId()).stream()
+                .anyMatch(r -> r.studentNo().equals("2026001") && "A".equals(r.gradeValue())));
+    }
+
+    @Test
+    @DisplayName("提交成绩：尚未开始的未来学期不能录入")
+    void gradesRejectedForFutureSemester() {
+        Semester future = semester("2027-2028-1", "2027-2028学年第一学期",
+                LocalDate.of(2027, 9, 1), LocalDate.of(2028, 1, 10));
+        CourseOffering offering = confirmedOffering(future.getId(), "CS101");
+
+        expectFailure(ErrorCodes.STATE_ERROR, () -> professorService.gradeSheet(1L, offering.getId()));
+    }
+
+    private Semester semester(String code, String name, LocalDate start, LocalDate end) {
+        Semester semester = new Semester();
+        semester.setCode(code);
+        semester.setName(name);
+        semester.setStartDate(start);
+        semester.setEndDate(end);
+        semester.setRegistrationStatus(RegistrationStatus.CLOSED);
+        semester.setCurrentFlag(false);
+        return semesterRepo.save(semester);
+    }
+
+    private CourseOffering confirmedOffering(Long semesterId, String courseNo) {
+        CourseOffering offering = new CourseOffering();
+        offering.setSemesterId(semesterId);
+        offering.setCourseNo(courseNo);
+        offering.setTitle("程序设计基础");
+        offering.setCredits(3);
+        offering.setDepartment("CS");
+        offering.setProfessorId(1L);
+        offering.setDayOfWeek(1);
+        offering.setStartTime(LocalTime.of(8, 0));
+        offering.setEndTime(LocalTime.of(9, 40));
+        offering.setRoom("A102");
+        offering.setCapacity(10);
+        offering.setMinStudents(3);
+        offering.setStatus(OfferingStatus.CONFIRMED);
+        return offeringRepo.save(offering);
+    }
+
+    private void enroll(Long offeringId, Long studentId) {
+        Enrollment enrollment = new Enrollment();
+        enrollment.setOfferingId(offeringId);
+        enrollment.setStudentId(studentId);
+        enrollment.setStatus(EnrollmentStatus.REGISTERED);
+        enrollmentRepo.save(enrollment);
     }
 }

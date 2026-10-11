@@ -1,13 +1,16 @@
 package com.wylie.registration.web;
 
 import com.wylie.registration.security.AuthUser;
+import com.wylie.registration.service.BillingService;
 import com.wylie.registration.service.ScheduleService;
 import com.wylie.registration.service.StudentQueryService;
+import com.wylie.registration.web.dto.BillingTransactionView;
 import com.wylie.registration.web.dto.CourseOfferingView;
 import com.wylie.registration.web.dto.ReportCardView;
 import com.wylie.registration.web.dto.ScheduleSubmitRequest;
 import com.wylie.registration.web.dto.ScheduleView;
 import com.wylie.registration.web.dto.SimpleMessage;
+import com.wylie.registration.web.dto.TranscriptView;
 import jakarta.validation.Valid;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -29,10 +32,13 @@ public class StudentController {
 
     private final ScheduleService scheduleService;
     private final StudentQueryService studentQueryService;
+    private final BillingService billingService;
 
-    public StudentController(ScheduleService scheduleService, StudentQueryService studentQueryService) {
+    public StudentController(ScheduleService scheduleService, StudentQueryService studentQueryService,
+                             BillingService billingService) {
         this.scheduleService = scheduleService;
         this.studentQueryService = studentQueryService;
+        this.billingService = billingService;
     }
 
     /** 本学期可选课程目录（来自遗留目录 + 课程班） */
@@ -41,10 +47,10 @@ public class StudentController {
         return scheduleService.catalog(AuthUser.current().id());
     }
 
-    /** 我的课表 */
+    /** 我的课表（不传 semesterId 则当前学期；历史学期用于只读查看） */
     @GetMapping("/schedule")
-    public ScheduleView schedule() {
-        return scheduleService.mySchedule(AuthUser.current().id());
+    public ScheduleView schedule(@RequestParam(required = false) Long semesterId) {
+        return scheduleService.mySchedule(AuthUser.current().id(), semesterId);
     }
 
     /** 暂存课表 */
@@ -78,9 +84,21 @@ public class StudentController {
         return scheduleService.adjustmentDrop(AuthUser.current().id(), offeringId);
     }
 
-    /** 查看成绩单（默认上一学期） */
+    /** 查看成绩单（默认上一学期，可指定任意学期） */
     @GetMapping("/report-card")
     public ReportCardView reportCard(@RequestParam(required = false) Long semesterId) {
         return studentQueryService.reportCard(AuthUser.current().id(), semesterId);
+    }
+
+    /** 学业记录：全部学期成绩按学期分组汇总 */
+    @GetMapping("/transcript")
+    public TranscriptView transcript() {
+        return studentQueryService.transcript(AuthUser.current().id());
+    }
+
+    /** 我的账单：本人计费交易（可选按学期筛选） */
+    @GetMapping("/billing-transactions")
+    public List<BillingTransactionView> billingTransactions(@RequestParam(required = false) Long semesterId) {
+        return billingService.listForStudent(AuthUser.current().id(), semesterId);
     }
 }

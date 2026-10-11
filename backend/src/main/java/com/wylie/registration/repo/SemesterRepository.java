@@ -13,4 +13,6 @@ public interface SemesterRepository extends JpaRepository<Semester, Long> {
     List<Semester> findAllByOrderByIdAsc();
 
     Optional<Semester> findFirstByIdLessThanOrderByIdDesc(Long id);
+
+    Optional<Semester> findByCode(String code);
 }

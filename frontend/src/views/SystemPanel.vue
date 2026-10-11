@@ -3,6 +3,9 @@
   <div>
     <fieldset class="win-group">
       <legend>遗留课程目录系统（DEC VAX / Ingres 模拟库）</legend>
+      <div v-if="!canControl" class="hint">
+        🔒 只读模式：仅注册管理员可切换演示开关；当前展示的是实时系统状态快照。
+      </div>
       <div class="toolbar" style="margin-bottom: 4px">
         <span class="badge">访问模式：{{ legacy.mode === 'direct' ? '直连遗留库（direct）' : '中间层缓存（cached）' }}</span>
         <span class="badge" :class="legacy.available ? 'ok' : 'err'">
@@ -16,12 +19,12 @@
         <span class="badge">上次加载耗时：{{ legacy.loadMillis != null ? legacy.loadMillis + ' ms' : '—' }}</span>
       </div>
       <div class="toolbar" style="margin-bottom: 0">
-        <Win95Button label="切换为中间层缓存（cached）" :disabled="busy || legacy.mode === 'cached'" @click="setMode('cached')" />
-        <Win95Button label="切换为直连遗留库（direct）" :disabled="busy || legacy.mode === 'direct'" @click="setMode('direct')" />
-        <Win95Button label="刷新缓存（回源）" :disabled="busy" @click="refreshCache" />
+        <Win95Button label="切换为中间层缓存（cached）" :disabled="busy || !canControl || legacy.mode === 'cached'" @click="setMode('cached')" />
+        <Win95Button label="切换为直连遗留库（direct）" :disabled="busy || !canControl || legacy.mode === 'direct'" @click="setMode('direct')" />
+        <Win95Button label="刷新缓存（回源）" :disabled="busy || !canControl" @click="refreshCache" />
         <Win95Button
           :label="legacy.available ? '模拟目录不可用' : '恢复目录可用'"
-          :disabled="busy"
+          :disabled="busy || !canControl"
           @click="toggleLegacy"
         />
       </div>
@@ -41,7 +44,7 @@
         <span class="badge">失败重试周期：{{ billing.retryIntervalSeconds }} 秒</span>
         <Win95Button
           :label="billing.available ? '模拟计费系统宕机' : '恢复计费系统'"
-          :disabled="busy"
+          :disabled="busy || !canControl"
           @click="toggleBilling"
         />
       </div>
@@ -72,12 +75,16 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { systemApi } from '../api'
+import { useAuthStore } from '../stores/auth'
 import { useUiStore } from '../stores/ui'
 import Win95Button from '../components/Win95Button.vue'
 
 const ui = useUiStore()
+const auth = useAuthStore()
 const status = ref({})
 const busy = ref(false)
+
+const canControl = computed(() => auth.isRegistrar)
 
 const legacy = computed(() => status.value.legacy || {})
 const billing = computed(() => status.value.billing || {})
@@ -88,6 +95,10 @@ async function load() {
 }
 
 async function guarded(action, message) {
+  if (!canControl.value) {
+    await ui.alert('只读模式：仅注册管理员可以切换演示开关。', '权限不足')
+    return
+  }
   busy.value = true
   try {
     await action()

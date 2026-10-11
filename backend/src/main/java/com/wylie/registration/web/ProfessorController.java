@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -38,16 +39,10 @@ public class ProfessorController {
         return professorService.qualifiedCourses(AuthUser.current().id());
     }
 
-    /** 我已选择的授课课程班（本学期） */
+    /** 我在指定学期的授课课程班（不传则当前学期；历史学期用于名单查看与成绩录入） */
     @GetMapping("/offerings")
-    public List<CourseOfferingView> myOfferings() {
-        return professorService.myOfferings(AuthUser.current().id());
-    }
-
-    /** 上一学期我教授的课程班（用于录入成绩） */
-    @GetMapping("/offerings/previous")
-    public List<CourseOfferingView> previousOfferings() {
-        return professorService.previousOfferings(AuthUser.current().id());
+    public List<CourseOfferingView> myOfferings(@RequestParam(required = false) Long semesterId) {
+        return professorService.myOfferings(AuthUser.current().id(), semesterId);
     }
 
     /** 选择授课课程班 */

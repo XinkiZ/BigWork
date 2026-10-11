@@ -14,4 +14,8 @@ public interface BillingTransactionRepository extends JpaRepository<BillingTrans
     List<BillingTransaction> findBySemesterIdOrderByIdAsc(Long semesterId);
 
     List<BillingTransaction> findAllByOrderByIdDesc();
+
+    List<BillingTransaction> findByStudentIdOrderByIdDesc(Long studentId);
+
+    List<BillingTransaction> findByStudentIdAndSemesterIdOrderByIdDesc(Long studentId, Long semesterId);
 }
