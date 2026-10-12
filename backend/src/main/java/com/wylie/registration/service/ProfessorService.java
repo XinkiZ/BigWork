@@ -198,7 +198,7 @@ public class ProfessorService {
                 .toList();
     }
 
-    /** 录入/修改成绩：仅授课教授本人、仅已开始的历史学期课程班、支持留空补录 */
+    /** 录入/修改成绩：仅授课教授本人、仅当前学期之前的已开始历史学期课程班、支持留空补录 */
     @Transactional
     public List<GradeRow> saveGrades(Long professorId, Long offeringId, GradeSaveRequest request) {
         CourseOffering offering = verifyOwner(professorId, offeringId);
@@ -252,7 +252,7 @@ public class ProfessorService {
         return offering;
     }
 
-    /** 成绩可录入范围：目标学期已开始且非当前学期（默认为上一学期，支持为更早学期补录） */
+    /** 成绩可录入范围：当前学期之前的已开始历史学期（默认为上一学期，支持为更早学期补录） */
     private void requireGradeableSemester(CourseOffering offering) {
         Semester semester = studentQuery.semesterById(offering.getSemesterId());
         Semester current = studentQuery.currentSemester();
@@ -261,6 +261,9 @@ public class ProfessorService {
         }
         if (semester.getStartDate() == null || semester.getStartDate().isAfter(LocalDate.now())) {
             throw new BusinessException(ErrorCodes.STATE_ERROR, "该学期尚未开始，不能录入成绩");
+        }
+        if (!StudentQueryService.isBefore(semester, current)) {
+            throw new BusinessException(ErrorCodes.STATE_ERROR, "该学期不在当前学期之前，暂不能录入成绩");
         }
     }
 

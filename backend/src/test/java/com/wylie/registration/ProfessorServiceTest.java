@@ -221,6 +221,25 @@ class ProfessorServiceTest extends AbstractIntegrationTest {
         expectFailure(ErrorCodes.STATE_ERROR, () -> professorService.gradeSheet(1L, offering.getId()));
     }
 
+    @Test
+    @DisplayName("提交成绩：晚于当前学期的学期不能录入（当前学期为最早学期时无可录入学期）")
+    void gradesRejectedForSemesterAfterCurrent() {
+        // 当前学期切换为学期 1（最早学期）：学期 2 虽已开始，但晚于当前学期，不属于可补录的历史学期
+        Semester current = semesterRepo.findByCurrentFlagTrue().orElseThrow();
+        current.setCurrentFlag(false);
+        semesterRepo.save(current);
+        Semester earliest = semesterRepo.findById(1L).orElseThrow();
+        earliest.setCurrentFlag(true);
+        semesterRepo.save(earliest);
+
+        BusinessException ex = expectFailure(ErrorCodes.STATE_ERROR, () -> professorService.gradeSheet(1L, 1L));
+        assertTrue(ex.getMessage().contains("当前学期之前"), "提示应说明仅支持当前学期之前的学期");
+        expectFailure(ErrorCodes.STATE_ERROR,
+                () -> professorService.saveGrades(1L, 1L, grades(new GradeSaveRequest.GradeLine(6L, "A"))));
+        // 学期 1 自身此时为当前学期，同样拒绝录入
+        expectFailure(ErrorCodes.STATE_ERROR, () -> professorService.gradeSheet(1L, 12L));
+    }
+
     private Semester semester(String code, String name, LocalDate start, LocalDate end) {
         Semester semester = new Semester();
         semester.setCode(code);

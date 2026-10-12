@@ -95,7 +95,10 @@ async function load() {
 
 onMounted(async () => {
   await semestersStore.load()
-  semesterId.value = semestersStore.previous ? semestersStore.previous.id : ''
+  const latest = [...semestersStore.list].sort(
+    (a, b) => (b.startDate || '').localeCompare(a.startDate || '') || b.id - a.id
+  )[0]
+  semesterId.value = semestersStore.previous ? semestersStore.previous.id : latest ? latest.id : ''
   await load()
 })
 </script>

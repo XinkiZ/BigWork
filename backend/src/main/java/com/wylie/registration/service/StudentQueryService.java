@@ -97,7 +97,8 @@ public class StudentQueryService {
                 .orElseThrow(() -> new BusinessException(ErrorCodes.NOT_FOUND, "没有上一学期数据"));
     }
 
-    private static boolean isBefore(Semester candidate, Semester current) {
+    /** 候选学期是否早于基准学期（日期缺失时退回按 id 比较）：成绩录入范围与"上一学期"口径共用 */
+    static boolean isBefore(Semester candidate, Semester current) {
         if (candidate.getStartDate() != null && current.getStartDate() != null) {
             return candidate.getStartDate().isBefore(current.getStartDate());
         }

@@ -1,11 +1,11 @@
-<!-- 教授：提交成绩（Submit Grades）—— 可为任意"已开始且非当前"学期的本人授课课程班录入/修改成绩 -->
+<!-- 教授：提交成绩（Submit Grades）—— 可为任意"当前学期之前"的历史学期本人授课课程班录入/修改成绩 -->
 <template>
   <div>
     <fieldset class="win-group">
       <legend>选择学期与课程班</legend>
       <div class="toolbar" style="margin-bottom: 4px">
-        <SemesterSelect v-model="semesterId" label="学期" :only-gradeable="true" @change="loadOfferings" />
-        <select v-model="selectedId" class="win-select" style="min-width: 320px" @change="loadSheet">
+        <SemesterSelect v-model="semesterId" label="学期" :only-gradeable="true" :disabled="noGradeableSemester" @change="loadOfferings" />
+        <select v-model="selectedId" class="win-select" style="min-width: 320px" :disabled="noGradeableSemester" @change="loadSheet">
           <option :value="null">— 请选择课程班 —</option>
           <option v-for="o in offerings" :key="o.offeringId" :value="o.offeringId">
             {{ o.courseNo }} {{ o.title }}（{{ o.timeText }}）
@@ -14,9 +14,13 @@
         <Win95Button label="重新载入" size="small" :disabled="!selectedId" @click="loadSheet" />
         <span class="badge">学生数：{{ rows.length }}</span>
       </div>
+      <div v-if="noGradeableSemester" class="hint">
+        ⚠ 暂无可录入成绩的学期：成绩录入仅对「当前学期之前」的历史学期开放，当前学期及其后的学期均不可录入。
+        如当前学期设置不当，请先到「学期管理」检查当前学期。
+      </div>
       <div class="hint">
         成绩等级：A / B / C / D / F / I，可留空表示尚未录入；支持后续补录与修改。仅授课教授本人可录入。
-        可选学期范围为「已开始且非当前」的学期（当前学期与未来学期尚不可录入成绩）。
+        可选学期范围为「当前学期之前」的历史学期（当前学期及其后的学期尚不可录入成绩）。
       </div>
     </fieldset>
 
@@ -45,7 +49,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { professorApi } from '../../api'
 import { useSemestersStore } from '../../stores/semesters'
 import { useUiStore } from '../../stores/ui'
@@ -56,6 +60,8 @@ import Win95Table from '../../components/Win95Table.vue'
 const ui = useUiStore()
 const semestersStore = useSemestersStore()
 const semesterId = ref('')
+const semestersReady = ref(false)
+const noGradeableSemester = computed(() => semestersReady.value && !semestersStore.gradeable.length)
 const offerings = ref([])
 const selectedId = ref(null)
 const rows = ref([])
@@ -124,9 +130,9 @@ async function save() {
 
 onMounted(async () => {
   await semestersStore.load()
+  semestersReady.value = true
   const gradeable = semestersStore.gradeable
   if (!gradeable.length) {
-    await ui.alert('目前没有可录入成绩的学期（成绩录入仅对已开始且非当前的历史学期开放）。', '暂无可录入学期')
     return
   }
   semesterId.value = gradeable[0].id

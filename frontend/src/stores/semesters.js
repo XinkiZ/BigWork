@@ -12,6 +12,14 @@ function byStartAsc(a, b) {
   return (a.startDate || '').localeCompare(b.startDate || '') || a.id - b.id
 }
 
+/** 学期先后：候选学期是否早于基准学期（日期缺失时退回按 id 比较），与后端 isBefore 口径一致 */
+function isBefore(candidate, base) {
+  if (candidate.startDate && base.startDate) {
+    return candidate.startDate < base.startDate
+  }
+  return candidate.id < base.id
+}
+
 /** 全角色共用的学期列表缓存：顶栏状态、各页面学期下拉均从这里取数 */
 export const useSemestersStore = defineStore('semesters', {
   state: () => ({
@@ -24,24 +32,24 @@ export const useSemestersStore = defineStore('semesters', {
     currentId() {
       return this.current ? this.current.id : null
     },
-    /** 上一学期：当前学期之前最近一个已开始的学期（无当前学期时退回最新历史学期） */
+    /** 上一学期：当前学期之前最近一个学期（无当前学期时退回最新已开始学期） */
     previous(state) {
       const sorted = [...state.list].sort(byStartAsc)
       const current = sorted.find((s) => s.currentFlag)
       if (current) {
-        const before = sorted.filter(
-          (s) => s.startDate < current.startDate || (s.startDate === current.startDate && s.id < current.id)
-        )
+        const before = sorted.filter((s) => isBefore(s, current))
         return before.length ? before[before.length - 1] : null
       }
       const started = sorted.filter((s) => s.startDate && s.startDate <= localToday())
       return started.length ? started[started.length - 1] : null
     },
-    /** 可录入成绩的学期：已开始且非当前（按开始日期倒序，最近的在前） */
+    /** 可录入成绩的学期：当前学期之前的已开始学期（按开始日期倒序，最近的在前；无前序学期时为空列表） */
     gradeable(state) {
       const today = localToday()
+      const current = state.list.find((s) => s.currentFlag)
       return state.list
         .filter((s) => !s.currentFlag && s.startDate && s.startDate <= today)
+        .filter((s) => (current ? isBefore(s, current) : true))
         .sort((a, b) => byStartAsc(b, a))
     }
   },

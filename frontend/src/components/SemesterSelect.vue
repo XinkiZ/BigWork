@@ -31,7 +31,7 @@ const props = defineProps({
   includeAll: { type: Boolean, default: false },
   allLabel: { type: String, default: '全部学期' },
   placeholder: { type: String, default: '' },
-  /** 仅列出"已开始且非当前"的学期（成绩录入口径） */
+  /** 仅列出"当前学期之前"的已开始历史学期（成绩录入口径） */
   onlyGradeable: { type: Boolean, default: false },
   minWidth: { type: String, default: '' },
   disabled: { type: Boolean, default: false },
