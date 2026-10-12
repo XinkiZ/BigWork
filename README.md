@@ -244,4 +244,4 @@ node tools/legacy-compare.mjs                  # 直连(约 8s) vs 缓存(<200ms
 - `db/`：数据库初始化脚本（主库 + 遗留目录库）
 - `tools/`：性能测试与遗留目录访问对比脚本（含 4 份实测结果 JSON：`perf-result.json`、`perf-result-schedule.json`、`perf-result-legacy-direct.json`、`legacy-compare-result.json`）
 - `docs/`：开发计划、需求分析、设计文档、程序代码规范、接口文档、测试计划、测试报告（7 份，Markdown + Mermaid 图）
-- `docs/成员A～F-个人工作说明.md`：6 名成员个人工作说明（含占位姓名，便于整篇替换）
+- `docs/成员A～F-个人工作说明.md`：6 名成员个人工作说明（组长 1 / 前端 1 / 数据库与整体架构 1 / 后端 3；含占位姓名，便于整篇替换）
