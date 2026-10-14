@@ -242,7 +242,24 @@ const backupCount = computed(() => backupLines.value.length)
 const selectedCredits = computed(() =>
   [...primaryLines.value, ...backupLines.value].reduce((sum, line) => sum + (line.credits || 0), 0)
 )
-const resultRows = computed(() => (schedule.value.items || []).filter((i) => i.status !== 'REMOVED'))
+const resultRows = computed(() =>
+  (schedule.value.items || [])
+    .filter((i) => i.status !== 'REMOVED')
+    .map((i) => ({
+      itemId: i.itemId,
+      itemType: i.itemType,
+      sortOrder: i.sortOrder,
+      status: i.status,
+      promoted: i.promoted,
+      courseNo: i.offering.courseNo,
+      title: i.offering.title,
+      credits: i.offering.credits,
+      professorName: i.offering.professorName,
+      timeText: i.offering.timeText,
+      room: i.offering.room,
+      offering: i.offering
+    }))
+)
 const adjustableOfferings = computed(() => {
   const chosen = new Set(resultRows.value.map((i) => i.offering.offeringId))
   return catalog.value.filter(

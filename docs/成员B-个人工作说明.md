@@ -59,6 +59,7 @@
 | 课表冲突标记修复 | DEF-04 | 统一按开始时刻 `HH:mm` 比较，修正整串 `HH:mm-HH:mm` 比较导致的标记失准 |
 | 登录按钮行为修复 | DEF-05 | `Win95Button` 保持受控语义，消除不透传 `type="submit"` 引发的登录页异常 |
 | 成绩页学期口径修复 | DEF-08/DEF-09 | `SemesterSelect :only-gradeable` + 无前序学期时空状态与禁用选择器 |
+| 已提交课表列显示修复 | DEF-10 | `resultRows` 按行展平 `offering` 字段（课程号/名称/学分/教授/时间/教室）并保留 `offering` 引用，修复"已提交课表"各列空白 |
 
 ## 3 关键设计取舍
 | 取舍 | 理由 |
